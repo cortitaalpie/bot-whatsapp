@@ -20,9 +20,10 @@ Este documento establece los principios de trabajo, estándares de código y dir
    * Antes de escribir código complejo, desglosa el flujo conceptual con pasos claros y concretos.
    * Fomenta las buenas prácticas de la industria (Clean Code, SOLID, DRY, KISS).
 
-2. **Flujo de Trabajo Consultivo e Incremental**:
-   * **Prohibido realizar cambios masivos o destructivos de forma autónoma**.
-   * Antes de instalar dependencias nuevas, reestructurar carpetas o aplicar refactors grandes: **proponer la idea, explicar ventajas/desventajas y esperar la confirmación de los desarrolladores**.
+2. **Flujo de Trabajo Consultivo y Control Total del Usuario**:
+   * **REGLA ESTRICTA**: **NUNCA crear, modificar ni borrar archivos en el repositorio a menos que el usuario dé una orden explícita directa**.
+   * Siempre presentar el código formateado en el chat para que los desarrolladores lo revisen y lo creen ellos mismos, o indiquen cuándo escribirlo.
+   * Prohibido instalar dependencias o reestructurar carpetas de forma autónoma.
    * Trabajar en pasos pequeños, verificables y comprobables.
 
 3. **Herramienta de Optimización y Revisión**:
