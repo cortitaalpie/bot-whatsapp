@@ -1,5 +1,10 @@
+import sys
 import requests
 import xmltodict
+
+# Asegura compatibilidad con emojis en cualquier terminal de Windows
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 WEBHOOK_URL = "http://127.0.0.1:8000/webhook/whatsapp"
 PHONE_NUMBER = "whatsapp:+5491112345678"

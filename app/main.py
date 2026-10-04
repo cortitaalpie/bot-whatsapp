@@ -1,12 +1,23 @@
+from typing import Dict, List
 from fastapi import FastAPI, Form, Response
 from app.services.twilio_service import twilio_service
+from app.services.ai_service import ai_service
 
 app = FastAPI(title="WhatsApp Hotel Reservation Bot")
 
+# Memoria en RAM: guarda el historial de mensajes por cada número de teléfono
+# Formato: { "whatsapp:+54911...": [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}] }
+sessions_memory: Dict[str, List[dict]] = {}
+
+# Límite de mensajes a recordar por conversación (evita gastar tokens innecesarios)
+MAX_HISTORY_MESSAGES = 10
+
+
 @app.get("/")
 def health_check():
-    """Endpoint para verificar que el servidor esté activo."""
-    return {"status": "ok", "service": "Hotel Bot API"}
+    """Endpoint de comprobación de salud del servidor."""
+    return {"status": "ok", "service": "Hotel Bot API con IA"}
+
 
 @app.post("/webhook/whatsapp")
 async def whatsapp_webhook(
@@ -15,37 +26,31 @@ async def whatsapp_webhook(
     ProfileName: str = Form(None)
 ):
     """
-    Endpoint principal que recibe los mensajes entrantes de WhatsApp vía Twilio.
-    - From: Número del remitente (ej: 'whatsapp:+54911xxxxxxxx')
-    - Body: Texto que escribió el usuario
-    - ProfileName: Nombre visible del contacto en WhatsApp
+    Webhook que recibe los mensajes de WhatsApp vía Twilio y los procesa con IA.
     """
-    user_text = Body.strip().lower()
-    user_name = ProfileName or "Huésped"
+    user_message = Body.strip()
+    user_id = From  # El identificador único del usuario es su número de teléfono
 
-    # Lógica de respuesta inicial de prueba
-    if user_text in ["hola", "buenas", "start", "menu"]:
-        reply_text = (
-            f"¡Hola {user_name}! 👋 Bienvenido al Hotel Paraíso.\n\n"
-            "¿En qué puedo ayudarte hoy?\n"
-            "1. 🏨 Consultar habitaciones y precios\n"
-            "2. 📅 Hacer una reserva\n"
-            "3. 🔍 Ver mis reservas\n\n"
-            "Responde con el número de la opción que deseas."
-        )
-    elif user_text == "1":
-        reply_text = (
-            "🏨 *Nuestras Habitaciones:*\n"
-            "- Simple: $50/noche\n"
-            "- Doble: $80/noche\n"
-            "- Suite Familiar: $120/noche\n\n"
-            "Escribe '2' para iniciar tu reserva."
-        )
-    elif user_text == "2":
-        reply_text = "📅 Para iniciar la reserva, ¿en qué fecha deseas ingresar? (Ejemplo: 2025-05-10)"
-    else:
-        reply_text = f"Recibí: \"{Body}\".\nEscribe *hola* para ver el menú de opciones."
+    # 1. Obtener el historial previo del usuario (o crear una lista vacía si es nuevo)
+    user_history = sessions_memory.get(user_id, [])
 
-    # Devolvemos la respuesta en formato TwiML (XML) a Twilio
-    twiml_content = twilio_service.build_twiml_response(reply_text)
+    # 2. Consultar al servicio de IA pasándole el mensaje actual y su historial
+    bot_reply = ai_service.get_chat_response(
+        user_message=user_message,
+        conversation_history=user_history
+    )
+
+    # 3. Actualizar el historial en memoria con la nueva interacción
+    user_history.append({"role": "user", "content": user_message})
+    user_history.append({"role": "assistant", "content": bot_reply})
+
+    # 4. Limitar el historial a los últimos N mensajes (Sliding Window)
+    if len(user_history) > MAX_HISTORY_MESSAGES:
+        user_history = user_history[-MAX_HISTORY_MESSAGES:]
+
+    # Guardar el historial actualizado
+    sessions_memory[user_id] = user_history
+
+    # 5. Devolver la respuesta a Twilio en formato TwiML
+    twiml_content = twilio_service.build_twiml_response(bot_reply)
     return Response(content=twiml_content, media_type="application/xml")
