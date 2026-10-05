@@ -19,6 +19,7 @@ def parse_bot_response(xml_content):
         return xml_content
 
 
+
 def start_chat():
     print("=" * 50)
     print("SIMULADOR DE WHATSAPP - HOTEL PARAISO")
